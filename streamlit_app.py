@@ -676,16 +676,87 @@ def main():
         with tab4:
             display_executive_insights(analysis_results)
         
-        with tab5:
-            st.subheader("📊 Analysis Data Tables")
+        # with tab5:
+        #     st.subheader("📊 Analysis Data Tables")
             
-            # Forecast table
-            st.markdown("#### 📈 Forecast Data")
-            st.dataframe(analysis_results['forecast'], use_container_width=True)
+        #     # Forecast table
+        #     st.markdown("#### 📈 Forecast Data")
+        #     try:
+        #         # Clean the forecast DataFrame for display
+        #         forecast_clean = analysis_results['forecast'].copy()
+        #         # Ensure all columns are properly typed
+        #         for col in forecast_clean.columns:
+        #             if forecast_clean[col].dtype == 'object':
+        #                 try:
+        #                     forecast_clean[col] = pd.to_numeric(forecast_clean[col], errors='ignore')
+        #                 except:
+        #                     pass
+        #         st.dataframe(forecast_clean, use_container_width=True)
+        #     except Exception as e:
+        #         st.error(f"Error displaying forecast data: {str(e)}")
+        #         st.write("Raw forecast data:")
+        #         st.write(analysis_results['forecast'])
+
+            with tab5:
+                st.subheader("📊 Analysis Data Tables")
+                
+                # Forecast table with error handling
+                st.markdown("#### 📈 Forecast Data")
+                try:
+                    st.dataframe(analysis_results['forecast'].copy(), use_container_width=True)
+                except:
+                    st.write(analysis_results['forecast'])
+                
+                # Comparison table with error handling
+                st.markdown("#### 💰 Cost Comparison") 
+                try:
+                    st.dataframe(analysis_results['comparison'].copy(), use_container_width=True)
+                except:
+                    st.write(analysis_results['comparison'])
             
             # Comparison table  
             st.markdown("#### 💰 Cost Comparison")
-            st.dataframe(analysis_results['comparison'], use_container_width=True)
+            try:
+                # Clean the comparison DataFrame for display
+                comparison_clean = analysis_results['comparison'].copy()
+                # Ensure all columns are properly typed
+                for col in comparison_clean.columns:
+                    if comparison_clean[col].dtype == 'object' and col != 'Best Option':
+                        try:
+                            # Remove commas and convert to numeric if possible
+                            if isinstance(comparison_clean[col].iloc[0], str):
+                                comparison_clean[col] = comparison_clean[col].str.replace(',', '').apply(pd.to_numeric, errors='ignore')
+                        except:
+                            pass
+                st.dataframe(comparison_clean, use_container_width=True)
+            except Exception as e:
+                st.error(f"Error displaying comparison data: {str(e)}")
+                st.write("Raw comparison data:")
+                st.write(analysis_results['comparison'])
+            
+            # Individual provider data
+            st.markdown("#### 🏢 Individual Provider Analysis")
+            
+            provider_tabs = st.tabs(["ONECI", "SmileID", "DKB Solutions"])
+            
+            model = analysis_results['model']
+            providers = [("oneci", "ONECI"), ("smileid", "SmileID"), ("dkb", "DKB Solutions")]
+            
+            for i, (provider_key, provider_name) in enumerate(providers):
+                with provider_tabs[i]:
+                    try:
+                        provider_df = financial_analysis(model, pricing_model=provider_key)
+                        # Clean the provider DataFrame
+                        provider_clean = provider_df.copy()
+                        for col in provider_clean.columns:
+                            if provider_clean[col].dtype == 'object' and 'FCFA' in col:
+                                try:
+                                    provider_clean[col] = pd.to_numeric(provider_clean[col], errors='ignore')
+                                except:
+                                    pass
+                        st.dataframe(provider_clean, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"Error displaying {provider_name} data: {str(e)}")
         
         # Export functionality
         st.sidebar.markdown("---")

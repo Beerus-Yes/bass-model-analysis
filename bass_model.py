@@ -52,104 +52,89 @@ class BassModel:
         self.q = imitation_coef
         self.results = None
         
-    def forecast(self, periods: int, time_unit: str = "months") -> pd.DataFrame:
+    def forecast(self, periods: int = 24, time_unit: str = "months") -> pd.DataFrame:
         """
-        Generate Bass Model forecast using the standard Bass equation.
-        
-        The Bass model equation: f(t) = [p + q*F(t-1)] * [M - N(t-1)]
-        Where:
-        - f(t) = new adopters at time t
-        - F(t) = cumulative adoption rate at time t
-        - N(t) = cumulative adopters at time t
+        Generate Bass Model forecast.
         
         Args:
-            periods: Number of time periods to forecast
-            time_unit: Time unit label (e.g., "months", "quarters", "years")
+            periods: Number of periods to forecast
+            time_unit: Time unit for periods (e.g., "months", "quarters")
             
         Returns:
-            DataFrame with forecasted adoption data containing:
-            - Period: Time period
-            - New Adopters: New adopters in each period
-            - Cumulative Adopters: Total adopters up to each period
-            - Market Penetration (%): Percentage of market penetrated
-            - Adoption Rate: Rate of adoption in each period
-            - Remaining Market: Untapped market remaining
+            DataFrame with forecast results
             
         Example:
             >>> model = BassModel(100000, 0.02, 0.4)
-            >>> forecast = model.forecast(periods=24, time_unit="months")
+            >>> forecast_df = model.forecast(periods=24)
+            >>> print(forecast_df.head())
         """
-        if periods <= 0:
-            raise ValueError("Periods must be positive")
-            
-        # Initialize arrays
-        cumulative = np.zeros(periods + 1)  # Start with 0 at t=0
-        new_adopters = np.zeros(periods)
-        adoption_rate = np.zeros(periods)
+        results = []
+        cumulative_adopters = 0  # Start from zero
         
-        # Calculate for each period using Bass equation
-        for t in range(periods):
-            # Current cumulative adopters
-            current_cum = cumulative[t]
+        for t in range(1, periods + 1):
+            # Calculate new adopters using Bass equation
+            remaining_market = self.M - cumulative_adopters
             
-            # Penetration rate (F(t))
-            penetration = current_cum / self.M if self.M > 0 else 0
-            
-            # Adoption probability at time t: p + q*F(t)
-            prob_adopt = self.p + self.q * penetration
-            
-            # Remaining market
-            remaining = self.M - current_cum
-            
-            # New adopters this period: f(t) = [p + q*F(t)] * [M - N(t)]
-            new_adopters[t] = prob_adopt * remaining
+            if remaining_market <= 0:
+                new_adopters = 0
+            else:
+                # Bass Model equation: f(t) = [p + (q * Y(t-1)/m)] * [m - Y(t-1)]
+                # where Y(t-1) is cumulative adopters at time t-1
+                adoption_rate = self.p + (self.q * cumulative_adopters / self.M)
+                new_adopters = adoption_rate * remaining_market
+                
+                # Ensure we don't exceed market size
+                if cumulative_adopters + new_adopters > self.M:
+                    new_adopters = self.M - cumulative_adopters
             
             # Update cumulative adopters
-            cumulative[t + 1] = current_cum + new_adopters[t]
+            cumulative_adopters += new_adopters
             
-            # Store adoption rate for analysis
-            adoption_rate[t] = prob_adopt
+            # Calculate metrics
+            market_penetration = (cumulative_adopters / self.M) * 100
+            adoption_rate_hazard = new_adopters / remaining_market if remaining_market > 0 else 0
+            
+            # Store results
+            results.append({
+                time_unit.capitalize().rstrip('s'): t,  # "Month", "Quarter", etc.
+                "New Adopters": round(new_adopters),
+                "Cumulative Adopters": round(cumulative_adopters),
+                "Market Penetration (%)": round(market_penetration, 2),
+                "Adoption Rate": round(adoption_rate_hazard, 4),
+                "Remaining Market": round(self.M - cumulative_adopters)
+            })
         
-        # Create results DataFrame
-        self.results = pd.DataFrame({
-            f"Period ({time_unit})": range(1, periods + 1),
-            "New Adopters": np.round(new_adopters).astype(int),
-            "Cumulative Adopters": np.round(cumulative[1:]).astype(int),
-            "Market Penetration (%)": np.round((cumulative[1:] / self.M) * 100, 2),
-            "Adoption Rate": np.round(adoption_rate, 4),
-            "Remaining Market": np.round(self.M - cumulative[1:]).astype(int)
-        })
-        
+        self.results = pd.DataFrame(results)
         return self.results
-    
+
     def get_peak_period(self) -> Dict:
-        """
-        Find the period with maximum new adopters (peak of adoption curve).
-        
-        Returns:
-            Dictionary containing:
-            - period: Period number when peak occurs
-            - new_adopters: Number of new adopters at peak
-            - cumulative_penetration: Market penetration at peak
+            """
+            Find the period with maximum new adopters (peak of adoption curve).
             
-        Raises:
-            ValueError: If forecast() hasn't been run yet
+            Returns:
+                Dictionary containing:
+                - period: Period number when peak occurs
+                - new_adopters: Number of new adopters at peak
+                - cumulative_penetration: Market penetration at peak
+                
+            Raises:
+                ValueError: If forecast() hasn't been run yet
+                
+            Example:
+                >>> peak_info = model.get_peak_period()
+                >>> print(f"Peak occurs in period {peak_info['period']}")
+            """
+            if self.results is None:
+                raise ValueError("Must run forecast() first")
+                
+            peak_idx = self.results["New Adopters"].idxmax()
+            peak_period = self.results.iloc[peak_idx]
             
-        Example:
-            >>> peak_info = model.get_peak_period()
-            >>> print(f"Peak occurs in period {peak_info['period']}")
-        """
-        if self.results is None:
-            raise ValueError("Must run forecast() first")
-            
-        peak_idx = self.results["New Adopters"].idxmax()
-        peak_period = self.results.iloc[peak_idx]
-        
-        return {
-            "period": peak_period.iloc[0],
-            "new_adopters": peak_period["New Adopters"],
-            "cumulative_penetration": peak_period["Market Penetration (%)"]
-        }
+            return {
+                "period": peak_period.iloc[0],
+                "new_adopters": peak_period["New Adopters"],
+                "cumulative_penetration": peak_period["Market Penetration (%)"]
+            }
     
     def get_time_to_peak(self) -> int:
         """

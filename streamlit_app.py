@@ -4,10 +4,17 @@ Streamlit Executive Dashboard for Bass Model Analysis
 A professional web application for analyzing Bass Diffusion Models with
 3-way pricing comparison (ONECI, SmileID, DKB Solutions).
 
+Updated with corrected usage patterns and precise input controls:
+- ONECI: 1 request (registration only)
+- SmileID: 3 requests (registration + signing + cancelling)
+- DKB: 1 request (signing only)
+
+Features precise number inputs for all parameters.
+
 Run with: streamlit run streamlit_app.py
 
 Author: Bass Model Analysis Team
-Version: 1.0.0
+Version: 1.3.0
 """
 
 import streamlit as st
@@ -217,31 +224,31 @@ def create_cost_comparison_chart(analysis_results):
         x=months,
         y=pd.to_numeric(oneci_df["Monthly Cost (FCFA)"]),
         mode='lines+markers',
-        name='ONECI',
+        name='ONECI (1 request/user)',
         line=dict(color=COLOR_PALETTE['primary']['oneci'], width=3),
-        hovertemplate='<b>ONECI</b><br>Month: %{x}<br>Cost: %{y:,.0f} FCFA<extra></extra>'
+        hovertemplate='<b>ONECI</b><br>Month: %{x}<br>Cost: %{y:,.0f} FCFA<br>Usage: 1 request/user<extra></extra>'
     ))
     
     fig.add_trace(go.Scatter(
         x=months,
         y=pd.to_numeric(smileid_df["Monthly Cost (FCFA)"]),
         mode='lines+markers',
-        name='SmileID',
+        name='SmileID (3 requests/user)',
         line=dict(color=COLOR_PALETTE['primary']['smileid'], width=3),
-        hovertemplate='<b>SmileID</b><br>Month: %{x}<br>Cost: %{y:,.0f} FCFA<extra></extra>'
+        hovertemplate='<b>SmileID</b><br>Month: %{x}<br>Cost: %{y:,.0f} FCFA<br>Usage: 3 requests/user<extra></extra>'
     ))
     
     fig.add_trace(go.Scatter(
         x=months,
         y=pd.to_numeric(dkb_df["Monthly Cost (FCFA)"]),
         mode='lines+markers',
-        name='DKB Solutions',
+        name='DKB Solutions (1 signature/user)',
         line=dict(color=COLOR_PALETTE['primary']['dkb'], width=3),
-        hovertemplate='<b>DKB Solutions</b><br>Month: %{x}<br>Cost: %{y:,.0f} FCFA<extra></extra>'
+        hovertemplate='<b>DKB Solutions</b><br>Month: %{x}<br>Cost: %{y:,.0f} FCFA<br>Usage: 1 signature/user<extra></extra>'
     ))
     
     fig.update_layout(
-        title='Monthly Cost Comparison - All Providers',
+        title='Monthly Cost Comparison - All Providers (Updated Usage Patterns)',
         xaxis_title='Month',
         yaxis_title='Monthly Cost (FCFA)',
         height=500,
@@ -279,7 +286,7 @@ def create_provider_breakdown_chart(analysis_results):
             labels=best_counts.index,
             values=best_counts.values,
             hole=0.4,
-            marker_colors=chart_colors,  # Use marker_colors instead of colors
+            marker_colors=chart_colors,
             textinfo='label+percent',
             textfont_size=12,
             hovertemplate='<b>%{label}</b><br>Months as best option: %{value}<br>Percentage: %{percent}<extra></extra>'
@@ -287,7 +294,7 @@ def create_provider_breakdown_chart(analysis_results):
     ])
     
     fig.update_layout(
-        title="Provider Dominance Over 24 Months",
+        title="Provider Dominance Over Analysis Period",
         height=400,
         showlegend=True,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
@@ -317,10 +324,11 @@ def display_kpi_cards(analysis_results):
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
+        actual_peak_period = peak_info['period']
         st.markdown('<div class="metric-card">', unsafe_allow_html=True)
         st.metric(
             label="🚀 Peak Period",
-            value=f"Month {peak_info['period']}",
+            value=f"Month {actual_peak_period}",
             delta=f"{peak_info['new_adopters']:,} new adopters"
         )
         st.markdown('</div>', unsafe_allow_html=True)
@@ -366,7 +374,7 @@ def display_provider_details(analysis_results):
     # Provider name mapping for usage patterns
     pattern_key_mapping = {
         "ONECI": "ONECI",
-        "SmileID": "SMILEID",  # Fix: SmileID maps to SMILEID
+        "SmileID": "SMILEID",
         "DKB Solutions": "DKB"
     }
     
@@ -406,20 +414,19 @@ def display_provider_details(analysis_results):
                 # Fallback if usage patterns not available
                 with st.expander(f"📋 {name} Usage Pattern"):
                     if name == "ONECI":
-                        st.write("**Description:** 2 one-time requests per user")
+                        st.write("**Description:** 1 one-time request per user (registration only)")
                         st.write("**Breakdown:**")
-                        st.write("• 1 request for user registration/verification")
-                        st.write("• 1 request for contract signing verification")
+                        st.write("• 1 request for user registration/verification only")
                         st.write("**Billing Model:** One-time costs")
                     elif name == "SmileID":
-                        st.write("**Description:** 2 one-time + 1 monthly recurring per user")
+                        st.write("**Description:** 3 one-time requests per user (registration + signing + cancelling)")
                         st.write("**Breakdown:**")
                         st.write("• 1 request for user registration/verification")
-                        st.write("• 1 request for contract signing verification")
-                        st.write("• 1 monthly request for payment verification (recurring)")
-                        st.write("**Billing Model:** Mixed (one-time + recurring)")
+                        st.write("• 1 request for contract signing")
+                        st.write("• 1 request for contract cancelling")
+                        st.write("**Billing Model:** One-time costs")
                     else:  # DKB Solutions
-                        st.write("**Description:** 1 one-time signature per user")
+                        st.write("**Description:** 1 one-time signature per user (signing only)")
                         st.write("**Breakdown:**")
                         st.write("• 1 digital signature for contract signing only")
                         st.write("**Billing Model:** One-time with high setup costs")
@@ -451,11 +458,17 @@ def display_executive_insights(analysis_results):
     cost = findings['cost_analysis']
     st.markdown(f'''
     <div class="recommendation-box">
-        <h4>💰 Cost Analysis</h4>
+        <h4>💰 Cost Analysis (Updated Usage Patterns)</h4>
         <ul>
             <li><strong>Most Cost-Effective:</strong> {cost['most_cost_effective']}</li>
             <li><strong>Potential Savings:</strong> {cost['potential_savings']}</li>
             <li><strong>Cost Range:</strong> {cost['cost_range']}</li>
+        </ul>
+        <p><strong>Note:</strong> Analysis reflects corrected usage patterns:</p>
+        <ul>
+            <li>ONECI: 1 request/user (registration)</li>
+            <li>SmileID: 3 requests/user (registration + signing + cancelling)</li>
+            <li>DKB: 1 signature/user (signing)</li>
         </ul>
     </div>
     ''', unsafe_allow_html=True)
@@ -525,6 +538,11 @@ def create_export_data(analysis_results):
             ['Most Cost-Effective', findings['cost_analysis']['most_cost_effective']],
             ['Potential Savings', findings['cost_analysis']['potential_savings']],
             ['Cost Range', findings['cost_analysis']['cost_range']],
+            ['', ''],
+            ['Updated Usage Patterns', ''],
+            ['ONECI', '1 request/user (registration only)'],
+            ['SmileID', '3 requests/user (registration + signing + cancelling)'],
+            ['DKB Solutions', '1 signature/user (signing only)'],
         ])
         
         exec_df = pd.DataFrame(exec_data, columns=['Metric', 'Value'])
@@ -560,23 +578,43 @@ def main():
             help="Total addressable market size"
         )
         
-        innovation_coef = st.sidebar.slider(
+        innovation_coef = st.sidebar.number_input(
             "📢 Innovation Coefficient (p)",
-            min_value=0.005,
-            max_value=0.05,
+            min_value=0.0,
+            max_value=1.0,
             value=0.01,
-            step=0.005,
-            help="External influence rate (advertising, media)"
+            step=0.001,
+            format="%.6f",
+            help="External influence rate (advertising, media). Can be 0 for pure word-of-mouth. Very low values like 0.00001 are possible."
         )
         
-        imitation_coef = st.sidebar.slider(
+        imitation_coef = st.sidebar.number_input(
             "👥 Imitation Coefficient (q)",
-            min_value=0.1,
-            max_value=1.0,
+            min_value=0.0,
+            max_value=2.0,
             value=0.4,
-            step=0.05,
-            help="Word-of-mouth influence rate"
+            step=0.01,
+            format="%.6f",
+            help="Word-of-mouth influence rate. Higher values = stronger viral effect."
         )
+        
+        # Parameter validation
+        if innovation_coef < 0 or innovation_coef > 1:
+            st.sidebar.error("⚠️ Innovation coefficient (p) should be between 0 and 1")
+        elif innovation_coef > 0.1:
+            st.sidebar.warning("📊 High p value (>0.1) - very aggressive external marketing")
+        elif innovation_coef == 0:
+            st.sidebar.info("🔄 Pure word-of-mouth model (p=0) - requires some initial adopters to start growth")
+        elif innovation_coef < 0.001:
+            st.sidebar.info("🔬 Very low p value - minimal external influence")
+            
+        if imitation_coef < 0 or imitation_coef > 2:
+            st.sidebar.error("⚠️ Imitation coefficient (q) should be between 0 and 2")
+        elif imitation_coef > 1:
+            st.sidebar.warning("🚀 High q value (>1) - very strong viral effect expected")
+        elif imitation_coef < 0.1:
+            st.sidebar.warning("📉 Low q value (<0.1) - weak word-of-mouth expected")
+    
     else:
         # Use predefined scenario
         scenario_data = scenarios[selected_scenario]
@@ -590,8 +628,23 @@ def main():
         st.sidebar.markdown(f"**Imitation (q):** {imitation_coef}")
         st.sidebar.markdown(f"**Description:** {scenario_data['description']}")
     
-    # Analysis period
-    periods = st.sidebar.slider("📅 Analysis Period (months)", 12, 36, 24, 3)
+    # Analysis period - changed from slider to number input
+    periods = st.sidebar.number_input(
+        "📅 Analysis Period (months)",
+        min_value=6,
+        max_value=120,
+        value=24,
+        step=1,
+        help="Number of months to analyze. Can be any value from 6 to 120 months (10 years)."
+    )
+    
+    # Period validation
+    if periods < 6:
+        st.sidebar.error("⚠️ Analysis period should be at least 6 months")
+    elif periods > 60:
+        st.sidebar.warning(f"📊 Long analysis period ({periods} months = {periods/12:.1f} years)")
+    elif periods > 120:
+        st.sidebar.error("⚠️ Maximum analysis period is 120 months (10 years)")
     
     # Run analysis button
     if st.sidebar.button("🚀 Run Analysis", type="primary", use_container_width=True):
@@ -669,50 +722,39 @@ def main():
                 
                 st.write(f"**Crossovers:** {breakeven['summary']['number_of_crossovers']}")
                 st.write(f"**Most Stable:** {breakeven['summary']['most_stable_provider']}")
+                
+                # Usage pattern summary
+                st.markdown("### 📋 Updated Usage Patterns")
+                st.write("**ONECI:** 1 req/user")
+                st.write("**SmileID:** 3 req/user")  
+                st.write("**DKB:** 1 sig/user")
         
         with tab3:
             display_provider_details(analysis_results)
         
         with tab4:
             display_executive_insights(analysis_results)
-        
-        # with tab5:
-        #     st.subheader("📊 Analysis Data Tables")
-            
-        #     # Forecast table
-        #     st.markdown("#### 📈 Forecast Data")
-        #     try:
-        #         # Clean the forecast DataFrame for display
-        #         forecast_clean = analysis_results['forecast'].copy()
-        #         # Ensure all columns are properly typed
-        #         for col in forecast_clean.columns:
-        #             if forecast_clean[col].dtype == 'object':
-        #                 try:
-        #                     forecast_clean[col] = pd.to_numeric(forecast_clean[col], errors='ignore')
-        #                 except:
-        #                     pass
-        #         st.dataframe(forecast_clean, use_container_width=True)
-        #     except Exception as e:
-        #         st.error(f"Error displaying forecast data: {str(e)}")
-        #         st.write("Raw forecast data:")
-        #         st.write(analysis_results['forecast'])
 
-            with tab5:
-                st.subheader("📊 Analysis Data Tables")
-                
-                # Forecast table with error handling
-                st.markdown("#### 📈 Forecast Data")
-                try:
-                    st.dataframe(analysis_results['forecast'].copy(), use_container_width=True)
-                except:
-                    st.write(analysis_results['forecast'])
-                
-                # Comparison table with error handling
-                st.markdown("#### 💰 Cost Comparison") 
-                try:
-                    st.dataframe(analysis_results['comparison'].copy(), use_container_width=True)
-                except:
-                    st.write(analysis_results['comparison'])
+        with tab5:
+            st.subheader("📊 Analysis Data Tables")
+            
+            # Forecast table
+            st.markdown("#### 📈 Forecast Data")
+            try:
+                # Clean the forecast DataFrame for display
+                forecast_clean = analysis_results['forecast'].copy()
+                # Ensure all columns are properly typed
+                for col in forecast_clean.columns:
+                    if forecast_clean[col].dtype == 'object':
+                        try:
+                            forecast_clean[col] = pd.to_numeric(forecast_clean[col], errors='ignore')
+                        except:
+                            pass
+                st.dataframe(forecast_clean, use_container_width=True)
+            except Exception as e:
+                st.error(f"Error displaying forecast data: {str(e)}")
+                st.write("Raw forecast data:")
+                st.write(analysis_results['forecast'])
             
             # Comparison table  
             st.markdown("#### 💰 Cost Comparison")
@@ -777,9 +819,9 @@ def main():
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 📋 Current Analysis")
         st.sidebar.markdown(f"**Market Size:** {market_size:,}")
-        st.sidebar.markdown(f"**Innovation (p):** {innovation_coef}")
-        st.sidebar.markdown(f"**Imitation (q):** {imitation_coef}")
-        st.sidebar.markdown(f"**Periods:** {periods} months")
+        st.sidebar.markdown(f"**Innovation (p):** {innovation_coef:.6f}")
+        st.sidebar.markdown(f"**Imitation (q):** {imitation_coef:.6f}")
+        st.sidebar.markdown(f"**Analysis Period:** {periods} months ({periods/12:.1f} years)")
         
     else:
         # Welcome screen
@@ -788,31 +830,30 @@ def main():
             <h2>🎯 Welcome to Bass Model Analysis</h2>
             <p>Analyze market adoption patterns and compare pricing strategies for digital signature providers.</p>
             <p><strong>Providers:</strong> ONECI • SmileID • DKB Solutions</p>
+            <p><strong>Updated:</strong> Corrected usage patterns and precise parameter controls!</p>
             <p>👈 Adjust parameters in the sidebar and click "Run Analysis" to begin!</p>
         </div>
         """, unsafe_allow_html=True)
         
-        # Usage patterns explanation
-        st.markdown("### 📋 Provider Usage Patterns")
-        
-        patterns = get_usage_pattern_summary()
+        # Usage patterns explanation - UPDATED
+        st.markdown("### 📋 Corrected Provider Usage Patterns")
         
         col1, col2, col3 = st.columns(3)
         
         with col1:
             st.markdown("""
             **🔵 ONECI**
-            - 2 one-time requests per user
-            - Registration + Contract signing
-            - Declining costs as growth slows
+            - 1 one-time request per user
+            - Registration only
+            - Simple, cost-effective
             """)
         
         with col2:
             st.markdown("""
             **🟢 SmileID**
-            - 2 one-time + 1 monthly per user
-            - Registration + Signing + Payment verification
-            - Growing costs with user base
+            - 3 one-time requests per user
+            - Registration + Signing + Cancelling
+            - Most comprehensive solution
             """)
         
         with col3:
@@ -820,7 +861,76 @@ def main():
             **🔴 DKB Solutions**
             - 1 one-time signature per user
             - Contract signing only
-            - High setup, then declining costs
+            - High setup, specialized use
+            """)
+        
+        # New features highlight
+        st.markdown("### 🆕 New Features")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            **📊 Updated Business Logic:**
+            - ✅ Corrected usage patterns per provider
+            - ✅ Accurate cost calculations
+            - ✅ Realistic business scenarios
+            """)
+        
+        with col2:
+            st.markdown("""
+            **🎯 Precise Input Controls:**
+            - ✅ Number input boxes for exact values
+            - ✅ p can go as low as 0.00001 or even 0
+            - ✅ 6-decimal precision (0.000001)
+            - ✅ Smart validation and warnings
+            """)
+        
+        # Business scenarios
+        st.markdown("### 💼 Business Scenarios")
+        
+        scenarios_col1, scenarios_col2 = st.columns(2)
+        
+        with scenarios_col1:
+            st.markdown("""
+            **Micro-Marketing (p = 0.00001):**
+            - Extremely minimal external influence
+            - Almost pure word-of-mouth
+            - Realistic for stealth/organic launches
+            """)
+        
+        with scenarios_col2:
+            st.markdown("""
+            **Flexible Time Horizons:**
+            - 6 months: Quick pilot assessment
+            - 24 months: Standard business planning
+            - 60 months: 5-year strategic horizon
+            - Up to 120 months: Long-term modeling
+            """)
+        
+        # Parameter precision examples
+        st.markdown("### 🔬 Parameter Precision Examples")
+        
+        examples_col1, examples_col2 = st.columns(2)
+        
+        with examples_col1:
+            st.markdown("""
+            **Innovation Coefficient (p) Examples:**
+            - `0.000000` → Pure word-of-mouth (no marketing)
+            - `0.00001` → Micro-marketing influence
+            - `0.001` → Minimal marketing budget
+            - `0.01` → Standard marketing investment
+            - `0.05` → Heavy marketing campaign
+            """)
+        
+        with examples_col2:
+            st.markdown("""
+            **Analysis Period Examples:**
+            - `6 months` → Pilot program assessment
+            - `18 months` → Product launch cycle
+            - `24 months` → Standard business plan
+            - `36 months` → Strategic planning horizon
+            - `60 months` → Long-term market evolution
             """)
 
 

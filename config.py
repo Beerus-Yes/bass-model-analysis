@@ -46,8 +46,8 @@ for directory in [DEFAULT_OUTPUT_DIR, DEFAULT_CHARTS_DIR, DEFAULT_REPORTS_DIR, D
 
 # Default Bass Model parameters
 DEFAULT_BASS_PARAMS = {
-    "market_size": 1_000_000,
-    "innovation_coef": 0.01,  # External influence (p)
+    "market_size": 500_000,
+    "innovation_coef": 0.02,  # External influence (p)
     "imitation_coef": 0.4     # Word-of-mouth influence (q)
 }
 
@@ -67,8 +67,8 @@ BASS_SCENARIOS = {
         "description": "Slow adoption, limited word-of-mouth"
     },
     "Balanced": {
-        "market_size": 1_000_000,
-        "innovation_coef": 0.01,
+        "market_size": 500_000,
+        "innovation_coef": 0.02,
         "imitation_coef": 0.4,
         "description": "Moderate adoption with balanced influences"
     },
@@ -107,28 +107,27 @@ CURRENCY_RATES = {
 # Usage patterns for each provider (corrected patterns)
 USAGE_PATTERNS = {
     "oneci": {
-        "description": "2 one-time requests per user",
-        "requests_per_new_user": 2,
+        "description": "1 one-time request per user (registration only)",
+        "requests_per_new_user": 1,
+        "monthly_recurring_per_user": 0,
+        "billing_type": "one_time",
+        "breakdown": [
+            "1 request for user registration/verification only"
+        ]
+    },
+    "smileid": {
+        "description": "3 one-time requests per user (registration + signing + cancelling)", 
+        "requests_per_new_user": 3,
         "monthly_recurring_per_user": 0,
         "billing_type": "one_time",
         "breakdown": [
             "1 request for user registration/verification",
-            "1 request for contract signing verification"
-        ]
-    },
-    "smileid": {
-        "description": "2 one-time requests + 1 monthly recurring per user", 
-        "requests_per_new_user": 2,
-        "monthly_recurring_per_user": 1,
-        "billing_type": "mixed",
-        "breakdown": [
-            "1 request for user registration/verification",
-            "1 request for contract signing verification",
-            "1 monthly request for payment verification (recurring)"
+            "1 request for contract signing",
+            "1 request for contract cancelling"
         ]
     },
     "dkb": {
-        "description": "1 one-time signature per user",
+        "description": "1 one-time signature per user (signing only)",
         "requests_per_new_user": 1, 
         "monthly_recurring_per_user": 0,
         "billing_type": "one_time_with_setup",

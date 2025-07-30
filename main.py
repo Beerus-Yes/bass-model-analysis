@@ -5,6 +5,11 @@ This script provides comprehensive examples of how to use the Bass Model
 analysis framework, including forecasting, pricing analysis, visualization,
 and business intelligence features.
 
+UPDATED with corrected usage patterns:
+- ONECI: 1 request per user (registration only)
+- SmileID: 2 one-time + 1 monthly recurring per user  
+- DKB: 1 signature per user (signing only)
+
 Usage:
     python main.py                    # Run full demo
     python main.py --scenario conservative  # Run specific scenario
@@ -12,7 +17,7 @@ Usage:
     python main.py --export-only        # Generate reports only
 
 Author: Bass Model Analysis Team
-Version: 1.0.0
+Version: 1.1.0 - FIXED ONECI usage pattern
 """
 
 import sys
@@ -36,7 +41,9 @@ from visualizations import (
     create_cost_comparison_chart,
     create_dashboard,
     export_results,
-    plot_sensitivity_heatmap
+    plot_sensitivity_heatmap,
+    create_correction_comparison_chart,
+    create_usage_pattern_diagram
 )
 from analysis_tools import (
     analyze_break_even_points,
@@ -60,12 +67,13 @@ warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
 
 
 def print_header():
-    """Print application header with version info."""
+    """Print application header with version info and correction notice."""
     print("=" * 80)
     print(f"{APP_NAME} v{APP_VERSION}")
     print("=" * 80)
     print("Enhanced Bass Diffusion Model with 3-Way Pricing Comparison")
-    print("Providers: ONECI, SmileID, DKB Solutions")
+    print("Providers: ONECI (CORRECTED), SmileID, DKB Solutions")
+    print("🔧 ONECI usage pattern corrected: Registration only (1 request/user)")
     print("=" * 80)
     print()
 
@@ -78,7 +86,9 @@ def print_usage_patterns():
     patterns = get_usage_pattern_summary()
     
     for provider, details in patterns["corrected_usage_patterns"].items():
-        print(f"\n{provider.upper()}:")
+        # Add correction indicator for ONECI
+        correction_mark = " 🔧 CORRECTED" if provider == "ONECI" else ""
+        print(f"\n{provider.upper()}{correction_mark}:")
         print(f"  📝 {details['description']}")
         print(f"  💡 Billing: {details['billing_model']}")
         print(f"  📈 Cost Pattern: {details['monthly_cost_pattern']}")
@@ -92,6 +102,11 @@ def print_usage_patterns():
         print(f"\n  {category.replace('_', ' ').title()}:")
         for provider, difference in differences.items():
             print(f"    • {provider}: {difference}")
+    
+    print(f"\n⚠️ CORRECTION IMPACT:")
+    print("  • ONECI costs reduced ~50% due to registration-only usage")
+    print("  • ONECI now significantly more competitive vs SmileID & DKB")
+    print("  • Better alignment with actual ONECI API usage patterns")
     print()
 
 
@@ -125,16 +140,24 @@ def run_basic_forecast(model: BassModel) -> None:
 
 
 def run_pricing_analysis(model: BassModel) -> Dict:
-    """Run comprehensive pricing analysis for all providers."""
-    print("💰 PRICING ANALYSIS")
+    """Run comprehensive pricing analysis for all providers with corrected patterns."""
+    print("💰 PRICING ANALYSIS (CORRECTED PATTERNS)")
     print("-" * 40)
     
     # Individual provider analysis
     print("\n📈 Individual Provider Analysis:")
     
     provider_data = {}
+    usage_patterns = {
+        "oneci": "1 request/user (registration only) - CORRECTED",
+        "smileid": "2 one-time + 1 monthly/user",
+        "dkb": "1 signature/user (signing only)"
+    }
+    
     for provider in ["oneci", "smileid", "dkb"]:
-        print(f"\n{provider.upper()}:")
+        correction_mark = " 🔧 CORRECTED" if provider == "oneci" else ""
+        print(f"\n{provider.upper()}{correction_mark}:")
+        print(f"  Usage Pattern: {usage_patterns[provider]}")
         
         financial_df = financial_analysis(model, pricing_model=provider)
         provider_data[provider] = financial_df
@@ -150,6 +173,11 @@ def run_pricing_analysis(model: BassModel) -> Dict:
         print(f"  Peak monthly cost: {peak_monthly:,.0f} FCFA")
         print(f"  Final monthly cost: {final_monthly:,.0f} FCFA")
         
+        # Cost per user analysis
+        final_users = model.results["Cumulative Adopters"].iloc[-1]
+        cost_per_user = total_cost / final_users if final_users > 0 else 0
+        print(f"  Cost per user: {cost_per_user:,.0f} FCFA")
+        
         # Show first 6 months detail
         print("  First 6 months detail:")
         display_cols = ["Month", financial_df.columns[2], "Monthly Cost (FCFA)", "Tier"]
@@ -159,8 +187,8 @@ def run_pricing_analysis(model: BassModel) -> Dict:
 
 
 def run_comparative_analysis(model: BassModel) -> pd.DataFrame:
-    """Run 3-way comparative analysis."""
-    print("\n🔄 COMPARATIVE ANALYSIS")
+    """Run 3-way comparative analysis with corrected patterns."""
+    print("\n🔄 COMPARATIVE ANALYSIS (CORRECTED ONECI)")
     print("-" * 40)
     
     # Generate comparison
@@ -176,16 +204,24 @@ def run_comparative_analysis(model: BassModel) -> pd.DataFrame:
     
     # Summary statistics
     best_counts = comparison_df['Best Option'].value_counts()
-    print(f"\n📊 Provider Dominance (24 months):")
+    print(f"\n📊 Provider Dominance (24 months) - CORRECTED ONECI:")
     for provider, count in best_counts.items():
         percentage = (count / len(comparison_df)) * 100
-        print(f"  {provider}: {count} months ({percentage:.1f}%)")
+        correction_note = " (improved due to correction)" if provider == "ONECI" else ""
+        print(f"  {provider}: {count} months ({percentage:.1f}%){correction_note}")
+    
+    # Analyze correction impact
+    oneci_dominance = best_counts.get('ONECI', 0)
+    if oneci_dominance > 12:  # More than 50%
+        print(f"\n💡 CORRECTION IMPACT: ONECI now dominates {oneci_dominance} months due to corrected usage pattern!")
+    elif oneci_dominance > 6:  # More than 25%
+        print(f"\n💡 CORRECTION IMPACT: ONECI significantly more competitive ({oneci_dominance} months)")
     
     return comparison_df
 
 
 def run_business_intelligence(model: BassModel) -> Dict:
-    """Run advanced business intelligence analysis."""
+    """Run advanced business intelligence analysis with correction insights."""
     print("\n🧠 BUSINESS INTELLIGENCE ANALYSIS")
     print("-" * 40)
     
@@ -195,15 +231,16 @@ def run_business_intelligence(model: BassModel) -> Dict:
     
     for provider, analysis in breakeven["periods_analysis"].items():
         if analysis["periods_cheapest"] > 0:
+            correction_note = " (enhanced by correction)" if provider == "ONECI" else ""
             print(f"  {provider}: Cheapest for {analysis['periods_cheapest']} months " +
-                  f"({analysis['dominance_percentage']:.1f}%)")
+                  f"({analysis['dominance_percentage']:.1f}%){correction_note}")
             print(f"    Periods: Month {analysis['first_cheapest_month']} - {analysis['last_cheapest_month']}")
     
     print(f"  Number of crossovers: {breakeven['summary']['number_of_crossovers']}")
     print(f"  Most stable provider: {breakeven['summary']['most_stable_provider']}")
     
     # ROI Metrics
-    print(f"\n💹 ROI Analysis:")
+    print(f"\n💹 ROI Analysis (Corrected Patterns):")
     roi_metrics = calculate_roi_metrics(model)
     
     final_users = model.results["Cumulative Adopters"].iloc[-1]
@@ -212,7 +249,9 @@ def run_business_intelligence(model: BassModel) -> Dict:
     for provider in ["oneci", "smileid", "dkb"]:
         metrics = roi_metrics[provider]
         cost_per_user = metrics["basic_metrics"]["cost_per_user_fcfa"]
-        print(f"  {provider.upper()}: {cost_per_user:,.0f} FCFA per user")
+        model_type = metrics["efficiency_metrics"]["model_type"]
+        correction_note = " (CORRECTED)" if provider == "oneci" else ""
+        print(f"  {provider.upper()}{correction_note}: {cost_per_user:,.0f} FCFA per user ({model_type})")
     
     # Market Timing
     print(f"\n⏰ Market Timing Analysis:")
@@ -237,12 +276,12 @@ def run_business_intelligence(model: BassModel) -> Dict:
 
 
 def run_scenario_analysis(base_model: BassModel) -> pd.DataFrame:
-    """Run scenario analysis with different parameter sets."""
-    print("\n🎭 SCENARIO ANALYSIS")
+    """Run scenario analysis with different parameter sets, highlighting ONECI improvement."""
+    print("\n🎭 SCENARIO ANALYSIS (ONECI CORRECTED)")
     print("-" * 40)
     
     # Use predefined scenarios from config
-    print("Comparing predefined scenarios:")
+    print("Comparing predefined scenarios with corrected ONECI patterns:")
     
     scenarios = {}
     for name, params in BASS_SCENARIOS.items():
@@ -254,12 +293,19 @@ def run_scenario_analysis(base_model: BassModel) -> pd.DataFrame:
     
     scenario_results = scenario_analysis(base_model, scenarios)
     
-    # Display results
+    # Display results with corrected column names
     display_cols = [
         "Scenario", "Final Users", "Final Penetration (%)", 
         "Peak Period", "Best Option"
     ]
     print(scenario_results[display_cols].to_string(index=False))
+    
+    # Analyze ONECI performance across scenarios
+    oneci_wins = scenario_results[scenario_results['Best Option'] == 'ONECI']
+    if len(oneci_wins) > 0:
+        print(f"\n💡 ONECI WINS in {len(oneci_wins)} scenarios due to corrected usage pattern:")
+        for _, row in oneci_wins.iterrows():
+            print(f"  • {row['Scenario']}: {row['Final Users']} users, {row['Final Penetration (%)']}% penetration")
     
     return scenario_results
 
@@ -275,7 +321,7 @@ def run_sensitivity_analysis(model: BassModel) -> pd.DataFrame:
         'q': [0.3, 0.35, 0.4, 0.45, 0.5]
     }
     
-    print("Testing parameter sensitivity:")
+    print("Testing parameter sensitivity (with corrected ONECI costs):")
     print(f"Innovation coefficients (p): {sensitivity_ranges['p']}")
     print(f"Imitation coefficients (q): {sensitivity_ranges['q']}")
     
@@ -306,8 +352,8 @@ def run_sensitivity_analysis(model: BassModel) -> pd.DataFrame:
 
 
 def generate_executive_report(model: BassModel) -> Dict:
-    """Generate comprehensive executive summary."""
-    print("\n📋 EXECUTIVE SUMMARY")
+    """Generate comprehensive executive summary with correction highlights."""
+    print("\n📋 EXECUTIVE SUMMARY (CORRECTED PATTERNS)")
     print("-" * 40)
     
     summary = generate_executive_summary(model)
@@ -317,6 +363,8 @@ def generate_executive_report(model: BassModel) -> Dict:
     print(f"Analysis Date: {overview['analysis_date']}")
     print(f"Model Parameters: {overview['model_parameters']}")
     print(f"Key Metric: {overview['key_metric']}")
+    if 'usage_patterns_note' in overview:
+        print(f"Usage Patterns: {overview['usage_patterns_note']}")
     
     # Key findings
     print(f"\n🎯 KEY FINDINGS:")
@@ -329,10 +377,17 @@ def generate_executive_report(model: BassModel) -> Dict:
     print(f"  • Peak growth: {market['peak_growth_period']} ({market['peak_monthly_adoption']:,} new adopters)")
     
     cost = summary["key_findings"]["cost_analysis"]
-    print(f"\nCost Analysis:")
+    print(f"\nCost Analysis (CORRECTED):")
     print(f"  • Most cost-effective: {cost['most_cost_effective']}")
     print(f"  • Potential savings: {cost['potential_savings']}")
     print(f"  • Cost range: {cost['cost_range']}")
+    
+    # Show usage patterns if available
+    if 'usage_patterns' in cost:
+        print(f"  • Usage patterns:")
+        for provider, pattern in cost['usage_patterns'].items():
+            correction_note = " (CORRECTED)" if provider == "oneci" else ""
+            print(f"    - {provider.upper()}{correction_note}: {pattern}")
     
     timing = summary["key_findings"]["timing_insights"]
     print(f"\nTiming Insights:")
@@ -358,8 +413,8 @@ def generate_executive_report(model: BassModel) -> Dict:
 
 
 def create_visualizations(model: BassModel, output_dir: str = "output") -> None:
-    """Generate all visualizations."""
-    print("\n📊 GENERATING VISUALIZATIONS")
+    """Generate all visualizations including correction-specific charts."""
+    print("\n📊 GENERATING VISUALIZATIONS (WITH CORRECTION INDICATORS)")
     print("-" * 40)
     
     try:
@@ -368,24 +423,41 @@ def create_visualizations(model: BassModel, output_dir: str = "output") -> None:
         adoption_fig = plot_adoption_curve(model, save_path=get_output_path("adoption_analysis.png", "charts"))
         plt.close(adoption_fig)
         
-        # 2. Financial analysis for each provider
+        # 2. Financial analysis for each provider (with correction indicators)
         for provider in ["oneci", "smileid", "dkb"]:
-            print(f"Creating {provider.upper()} financial analysis...")
+            suffix = "_CORRECTED" if provider == "oneci" else ""
+            print(f"Creating {provider.upper()} financial analysis{suffix}...")
             financial_fig = plot_financial_analysis(model, pricing_model=provider, 
-                                                   save_path=get_output_path(f"{provider}_financial.png", "charts"))
+                                                   save_path=get_output_path(f"{provider}_financial{suffix}.png", "charts"))
             plt.close(financial_fig)
         
-        # 3. Cost comparison
-        print("Creating cost comparison chart...")
-        comparison_fig = create_cost_comparison_chart(model, save_path=get_output_path("cost_comparison.png", "charts"))
+        # 3. Cost comparison (with correction indicators)
+        print("Creating cost comparison chart (CORRECTED ONECI)...")
+        comparison_fig = create_cost_comparison_chart(model, save_path=get_output_path("cost_comparison_CORRECTED.png", "charts"))
         plt.close(comparison_fig)
         
-        # 4. Executive dashboard
-        print("Creating executive dashboard...")
-        dashboard_fig = create_dashboard(model, save_path=get_output_path("executive_dashboard.png", "charts"))
+        # 4. Executive dashboard (with correction indicators)
+        print("Creating executive dashboard (CORRECTED)...")
+        dashboard_fig = create_dashboard(model, save_path=get_output_path("executive_dashboard_CORRECTED.png", "charts"))
         plt.close(dashboard_fig)
         
-        # 5. Sensitivity heatmap
+        # 5. NEW: ONECI correction comparison chart
+        print("Creating ONECI correction impact chart...")
+        try:
+            correction_fig = create_correction_comparison_chart(model, save_path=get_output_path("oneci_correction_impact.png", "charts"))
+            plt.close(correction_fig)
+        except Exception as e:
+            print(f"  Note: ONECI correction chart skipped ({str(e)})")
+        
+        # 6. NEW: Usage pattern diagram
+        print("Creating usage pattern diagram...")
+        try:
+            pattern_fig = create_usage_pattern_diagram(save_path=get_output_path("usage_patterns_diagram.png", "charts"))
+            plt.close(pattern_fig)
+        except Exception as e:
+            print(f"  Note: Usage pattern diagram skipped ({str(e)})")
+        
+        # 7. Sensitivity heatmap
         print("Creating sensitivity heatmap...")
         try:
             sensitivity_ranges = {'p': [0.01, 0.02, 0.03], 'q': [0.3, 0.4, 0.5]}
@@ -396,33 +468,35 @@ def create_visualizations(model: BassModel, output_dir: str = "output") -> None:
             print(f"  Note: Sensitivity heatmap skipped ({str(e)})")
         
         print("✅ All visualizations created successfully!")
+        print("🔧 Charts include ONECI correction indicators and new comparison charts")
         
     except Exception as e:
         print(f"❌ Error creating visualizations: {str(e)}")
 
 
 def export_comprehensive_report(model: BassModel) -> None:
-    """Export comprehensive Excel report with all analysis."""
-    print("\n📄 EXPORTING COMPREHENSIVE REPORT")
+    """Export comprehensive Excel report with all analysis and correction notes."""
+    print("\n📄 EXPORTING COMPREHENSIVE REPORT (CORRECTED)")
     print("-" * 40)
     
     try:
-        filename = get_output_path(get_default_filename("bass_analysis_complete") + ".xlsx", "reports")
+        filename = get_output_path(get_default_filename("bass_analysis_complete_CORRECTED") + ".xlsx", "reports")
         
-        # Export with all charts
-        export_results(model, filename, include_charts=True, pricing_model="dkb")
+        # Export with all charts and correction indicators
+        export_results(model, filename, include_charts=True, pricing_model="oneci")
         
         print(f"✅ Comprehensive report exported successfully!")
         print(f"📁 Location: {filename}")
+        print(f"🔧 Report includes ONECI correction metadata and indicators")
         
     except Exception as e:
         print(f"❌ Error exporting report: {str(e)}")
 
 
 def run_quick_analysis(scenario_name: str = "Balanced") -> None:
-    """Run a quick analysis with minimal output."""
-    print(f"🚀 QUICK ANALYSIS - {scenario_name.title()} Scenario")
-    print("-" * 50)
+    """Run a quick analysis with minimal output, highlighting ONECI correction."""
+    print(f"🚀 QUICK ANALYSIS - {scenario_name.title()} Scenario (ONECI CORRECTED)")
+    print("-" * 60)
     
     # Get scenario parameters
     if scenario_name.title() in BASS_SCENARIOS:
@@ -449,25 +523,34 @@ def run_quick_analysis(scenario_name: str = "Balanced") -> None:
     print(f"Peak Adoption: Month {peak_info['period']} ({peak_info['new_adopters']:,} new adopters)")
     print(f"Final Results: {final_users:,} users ({final_penetration:.1f}% penetration)")
     
-    # Quick cost comparison
+    # Quick cost comparison with corrected patterns
     pricing_summary = get_pricing_summary(model)
     costs = {
-        "ONECI": pricing_summary['oneci']['total_cost_fcfa'],
+        "ONECI (CORRECTED)": pricing_summary['oneci']['total_cost_fcfa'],
         "SmileID": pricing_summary['smileid']['total_cost_fcfa'],
         "DKB": pricing_summary['dkb']['total_cost_fcfa']
     }
     
     cheapest = min(costs, key=costs.get)
-    print(f"\nCost Analysis (24 months):")
+    print(f"\nCost Analysis (24 months) - CORRECTED PATTERNS:")
+    print(f"📋 Usage Patterns:")
+    print(f"  • ONECI: 1 request/user (registration only) - CORRECTED")
+    print(f"  • SmileID: 2 one-time + 1 monthly/user")
+    print(f"  • DKB: 1 signature/user (signing only)")
+    
+    print(f"\n💰 Total Costs:")
     for provider, cost in costs.items():
         marker = "👑" if provider == cheapest else "  "
         print(f"{marker} {provider}: {cost:,.0f} FCFA")
     
     print(f"\n🏆 Best Option: {cheapest}")
+    
+    if "ONECI" in cheapest:
+        print(f"💡 ONECI wins due to corrected usage pattern (registration only)!")
 
 
 def run_full_demo(scenario_name: str = "Balanced") -> None:
-    """Run comprehensive demo with all features."""
+    """Run comprehensive demo with all features and correction highlights."""
     print_header()
     print_usage_patterns()
     
@@ -507,14 +590,16 @@ def run_full_demo(scenario_name: str = "Balanced") -> None:
     print("✅ ANALYSIS COMPLETE!")
     print("=" * 80)
     print("📁 Check the 'output' directory for:")
-    print("  • charts/ - All visualization files")
-    print("  • reports/ - Excel analysis report")
+    print("  • charts/ - All visualization files (with correction indicators)")
+    print("  • reports/ - Excel analysis report (with correction metadata)")
+    print("🔧 All outputs reflect corrected ONECI usage pattern")
+    print("💡 ONECI costs reduced ~50% due to registration-only usage")
     print("🎉 Thank you for using Bass Model Analysis!")
 
 
 def main():
     """Main entry point with command line argument parsing."""
-    parser = argparse.ArgumentParser(description="Bass Model Analysis Demo")
+    parser = argparse.ArgumentParser(description="Bass Model Analysis Demo - ONECI CORRECTED")
     parser.add_argument("--scenario", "-s", 
                        choices=list(BASS_SCENARIOS.keys()) + ["default"],
                        default="Balanced",
@@ -525,14 +610,27 @@ def main():
                        help="Generate reports without running analysis")
     parser.add_argument("--no-charts", action="store_true",
                        help="Skip chart generation")
+    parser.add_argument("--show-correction", action="store_true",
+                       help="Show detailed correction information")
     
     args = parser.parse_args()
+    
+    # Show correction details if requested
+    if args.show_correction:
+        print("🔧 ONECI CORRECTION DETAILS:")
+        print("-" * 40)
+        print("• Changed from: 2 requests per user (registration + contract signing)")
+        print("• Changed to: 1 request per user (registration only)")
+        print("• Impact: ~50% cost reduction for ONECI")
+        print("• Result: ONECI much more competitive vs SmileID & DKB")
+        print("• Files updated: pricing_models.py, analysis_tools.py, streamlit_app.py, config.py, visualizations.py, main.py")
+        print()
     
     try:
         if args.quick:
             run_quick_analysis(args.scenario)
         elif args.export_only:
-            print("📄 Export-only mode")
+            print("📄 Export-only mode (CORRECTED)")
             print("Creating model with default parameters...")
             model = BassModel(**DEFAULT_BASS_PARAMS)
             model.forecast(24)

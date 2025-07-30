@@ -2,12 +2,12 @@
 Pricing models for different service providers.
 
 This module contains pricing functions and financial analysis for:
-- ONECI: 1 one-time request per user (registration only)
+- ONECI: 2 one-time requests per user (registration + contract signing)
 - SmileID: 2 one-time requests per user + 1 monthly recurring (payment verification)  
 - DKB Solutions: 1 one-time signature per user (contract signing only)
 
 Author: Bass Model Analysis Team
-Version: 1.1.0 - FIXED ONECI usage pattern
+Version: 1.0.0
 """
 
 import pandas as pd
@@ -139,7 +139,7 @@ def financial_analysis(model: BassModel, requests_per_user: int = 3, pricing_mod
     Calculate monthly cost based on cumulative adopters and pricing model.
     
     CORRECTED USAGE PATTERNS:
-    - ONECI: 1 one-time request per user (registration only)
+    - ONECI: 2 one-time requests per user (registration + contract signing)
     - SmileID: 2 one-time requests per user + 1 monthly recurring (payment verification)  
     - DKB: 1 one-time signature per user (contract signing only)
     
@@ -176,9 +176,9 @@ def financial_analysis(model: BassModel, requests_per_user: int = 3, pricing_mod
         new_adopters_this_month = model.results["New Adopters"].iloc[idx-1]
         
         if pricing_model == "oneci":
-            # ONECI: 1 request per user (registration only) - ONE TIME ONLY
-            # Only NEW users generate requests (1 request each)
-            monthly_requests = new_adopters_this_month * 1  # 1 one-time request per new user
+            # ONECI: 2 requests per user (registration + contract signing) - ONE TIME ONLY
+            # Only NEW users generate requests (2 requests each)
+            monthly_requests = new_adopters_this_month * 2  # 2 one-time requests per new user
             
             unit_price_fcfa = get_oneci_tarif(monthly_requests)
             monthly_cost = monthly_requests * unit_price_fcfa
@@ -281,7 +281,7 @@ def compare_pricing_models(model: BassModel, requests_per_user: int = 3, periods
     Compare ONECI vs SmileID vs DKB pricing models side by side.
     
     CORRECTED USAGE PATTERNS:
-    - ONECI: 1 one-time request per NEW user (registration only)
+    - ONECI: 2 one-time requests per NEW user (registration + contract signing)
     - SmileID: 2 one-time + 1 monthly recurring per user (registration + signing + payment verification)
     - DKB: 1 one-time signature per NEW user (contract signing only)
     
@@ -319,7 +319,7 @@ def compare_pricing_models(model: BassModel, requests_per_user: int = 3, periods
         dkb_cost = pd.to_numeric(dkb_df.iloc[i]["Monthly Cost (FCFA)"])
         
         # Extract volume data (different meanings for each provider)
-        oneci_volume = oneci_df.iloc[i].iloc[2]      # New user requests (1 per new user)
+        oneci_volume = oneci_df.iloc[i].iloc[2]      # New user requests (2 per new user)
         smileid_volume = smileid_df.iloc[i].iloc[2]  # Total requests (new + recurring)
         dkb_volume = dkb_df.iloc[i]["New Signatures"] # NEW signatures only
         
@@ -358,7 +358,7 @@ def get_pricing_summary(model: BassModel, requests_per_user: int = 3) -> Dict:
     Get a comprehensive summary of pricing analysis for all models.
     
     Note: requests_per_user parameter is ignored as usage patterns are now fixed:
-    - ONECI: 1 request per new user (registration only)
+    - ONECI: 2 requests per new user (one-time)
     - SmileID: 2 requests per new user + 1 per user monthly (mixed)
     - DKB: 1 signature per new user (one-time)
     
@@ -383,7 +383,7 @@ def get_pricing_summary(model: BassModel, requests_per_user: int = 3) -> Dict:
     
     summary = {
         "usage_patterns": {
-            "oneci": "1 one-time request per new user (registration only)",
+            "oneci": "2 one-time requests per new user (registration + contract signing)",
             "smileid": "2 one-time requests per new user + 1 monthly recurring per user (payment verification)",
             "dkb": "1 one-time signature per new user (contract signing only)"
         },
@@ -504,9 +504,10 @@ def get_usage_pattern_summary() -> Dict:
     return {
         "corrected_usage_patterns": {
             "ONECI": {
-                "description": "1 one-time request per user",
+                "description": "2 one-time requests per user",
                 "breakdown": [
-                    "1 request for user registration/verification only"
+                    "1 request for user registration/verification",
+                    "1 request for contract signing verification"
                 ],
                 "billing_model": "One-time charges for new users only",
                 "monthly_cost_pattern": "Decreases as adoption curve flattens"

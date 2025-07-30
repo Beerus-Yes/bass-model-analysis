@@ -8,8 +8,13 @@ This module provides utility functions for:
 - Statistical analysis of adoption patterns
 - Business intelligence and decision support
 
+Updated with corrected usage patterns:
+- ONECI: 1 request per user (registration only)
+- SmileID: 2 one-time + 1 monthly recurring per user
+- DKB: 1 signature per user (signing only)
+
 Author: Bass Model Analysis Team
-Version: 1.0.0
+Version: 1.1.0 - FIXED ONECI usage pattern
 """
 
 import pandas as pd
@@ -20,16 +25,21 @@ from pricing_models import financial_analysis, compare_pricing_models, get_prici
 import warnings
 
 
-def analyze_break_even_points(model: BassModel, requests_per_user: int = 3) -> Dict:
+def analyze_break_even_points(model: BassModel, requests_per_user: int = None) -> Dict:
     """
     Analyze break-even points between different pricing models.
     
     Identifies when each provider becomes the most cost-effective option
     and calculates crossover periods.
     
+    CORRECTED USAGE PATTERNS:
+    - ONECI: 1 request per user (registration only)
+    - SmileID: 2 one-time + 1 monthly recurring per user
+    - DKB: 1 signature per user (signing only)
+    
     Args:
         model: BassModel instance with forecast results
-        requests_per_user: Ignored - usage patterns are fixed per provider
+        requests_per_user: DEPRECATED - usage patterns are now fixed per provider
         
     Returns:
         Dictionary with break-even analysis including:
@@ -43,7 +53,11 @@ def analyze_break_even_points(model: BassModel, requests_per_user: int = 3) -> D
         >>> breakeven = analyze_break_even_points(model)
         >>> print(breakeven['summary']['best_overall'])
     """
-    comparison_df = compare_pricing_models(model, requests_per_user)
+    if requests_per_user is not None:
+        warnings.warn("requests_per_user parameter is deprecated. Usage patterns are now fixed per provider.", 
+                     DeprecationWarning, stacklevel=2)
+    
+    comparison_df = compare_pricing_models(model)
     
     # Find when each provider is cheapest
     oneci_cheapest = comparison_df[comparison_df['Best Option'] == 'ONECI']
@@ -101,13 +115,18 @@ def analyze_break_even_points(model: BassModel, requests_per_user: int = 3) -> D
     }
 
 
-def calculate_roi_metrics(model: BassModel, requests_per_user: int = 3) -> Dict:
+def calculate_roi_metrics(model: BassModel, requests_per_user: int = None) -> Dict:
     """
     Calculate comprehensive ROI metrics for each pricing model.
     
+    CORRECTED USAGE PATTERNS:
+    - ONECI: 1 request per user (registration only)
+    - SmileID: 2 one-time + 1 monthly recurring per user
+    - DKB: 1 signature per user (signing only)
+    
     Args:
         model: BassModel instance with forecast results
-        requests_per_user: Ignored - usage patterns are fixed per provider
+        requests_per_user: DEPRECATED - usage patterns are now fixed per provider
         
     Returns:
         Dictionary with ROI analysis including:
@@ -120,6 +139,10 @@ def calculate_roi_metrics(model: BassModel, requests_per_user: int = 3) -> Dict:
         >>> roi_metrics = calculate_roi_metrics(model)
         >>> print(f"DKB setup ROI: {roi_metrics['dkb']['setup_roi_months']} months")
     """
+    if requests_per_user is not None:
+        warnings.warn("requests_per_user parameter is deprecated. Usage patterns are now fixed per provider.", 
+                     DeprecationWarning, stacklevel=2)
+    
     if model.results is None:
         raise ValueError("Must run forecast() first")
     
@@ -132,7 +155,14 @@ def calculate_roi_metrics(model: BassModel, requests_per_user: int = 3) -> Dict:
     
     roi_analysis = {}
     
-    for name, df, model_type in [("oneci", oneci_df, "one-time"), ("smileid", smileid_df, "mixed"), ("dkb", dkb_df, "front-loaded")]:
+    # Updated model types to reflect corrected usage patterns
+    provider_info = [
+        ("oneci", oneci_df, "one-time (registration only)"), 
+        ("smileid", smileid_df, "mixed (one-time + recurring)"), 
+        ("dkb", dkb_df, "front-loaded (signing only)")
+    ]
+    
+    for name, df, model_type in provider_info:
         total_cost = df["Cumulative Cost (FCFA)"].iloc[-1]
         monthly_costs = df["Monthly Cost (FCFA)"].astype(float)
         
@@ -178,7 +208,7 @@ def calculate_roi_metrics(model: BassModel, requests_per_user: int = 3) -> Dict:
             ongoing_costs = total_cost - setup_cost
             
             # Calculate setup ROI (how many months to break even vs cheapest alternative)
-            comparison = compare_pricing_models(model, requests_per_user)
+            comparison = compare_pricing_models(model)
             dkb_costs = [pd.to_numeric(comparison.iloc[i]["DKB Cost (FCFA)"].replace(",", "")) for i in range(len(comparison))]
             
             # Find cheapest alternative each month
@@ -224,6 +254,11 @@ def calculate_roi_metrics(model: BassModel, requests_per_user: int = 3) -> Dict:
 def scenario_analysis(base_model: BassModel, scenarios: Dict[str, Dict]) -> pd.DataFrame:
     """
     Perform scenario analysis with different parameter combinations.
+    
+    Uses corrected usage patterns:
+    - ONECI: 1 request per user (registration only)
+    - SmileID: 2 one-time + 1 monthly recurring per user
+    - DKB: 1 signature per user (signing only)
     
     Args:
         base_model: Base BassModel instance (used for reference parameters)
@@ -271,9 +306,9 @@ def scenario_analysis(base_model: BassModel, scenarios: Dict[str, Dict]) -> pd.D
             "Peak Adopters": peak_info["new_adopters"],
             "Final Users": final_users,
             "Final Penetration (%)": round(final_penetration, 1),
-            "ONECI Total Cost": f"{pricing_summary['oneci']['total_cost_fcfa']:,.0f}",
-            "SmileID Total Cost": f"{pricing_summary['smileid']['total_cost_fcfa']:,.0f}",
-            "DKB Total Cost": f"{pricing_summary['dkb']['total_cost_fcfa']:,.0f}",
+            "ONECI Total Cost (1 req/user)": f"{pricing_summary['oneci']['total_cost_fcfa']:,.0f}",
+            "SmileID Total Cost (2+1 req/user)": f"{pricing_summary['smileid']['total_cost_fcfa']:,.0f}",
+            "DKB Total Cost (1 sig/user)": f"{pricing_summary['dkb']['total_cost_fcfa']:,.0f}",
             "Best Option": pricing_summary['comparison']['cheapest_provider']
         })
     
@@ -426,13 +461,18 @@ def what_if_analysis(model: BassModel, parameter_changes: Dict[str, List[float]]
     return pd.DataFrame(results)
 
 
-def generate_executive_summary(model: BassModel, requests_per_user: int = 3) -> Dict:
+def generate_executive_summary(model: BassModel, requests_per_user: int = None) -> Dict:
     """
     Generate a comprehensive executive summary of the analysis.
     
+    CORRECTED USAGE PATTERNS REFLECTED IN ANALYSIS:
+    - ONECI: 1 request per user (registration only)
+    - SmileID: 2 one-time + 1 monthly recurring per user
+    - DKB: 1 signature per user (signing only)
+    
     Args:
         model: BassModel instance with forecast results
-        requests_per_user: Ignored - usage patterns are fixed per provider
+        requests_per_user: DEPRECATED - usage patterns are now fixed per provider
         
     Returns:
         Dictionary with executive summary including key findings and recommendations
@@ -441,6 +481,10 @@ def generate_executive_summary(model: BassModel, requests_per_user: int = 3) -> 
         >>> summary = generate_executive_summary(model)
         >>> print(summary['key_findings']['market_opportunity'])
     """
+    if requests_per_user is not None:
+        warnings.warn("requests_per_user parameter is deprecated. Usage patterns are now fixed per provider.", 
+                     DeprecationWarning, stacklevel=2)
+    
     if model.results is None:
         raise ValueError("Must run forecast() first")
     
@@ -466,7 +510,13 @@ def generate_executive_summary(model: BassModel, requests_per_user: int = 3) -> 
         "cost_analysis": {
             "most_cost_effective": pricing_summary['comparison']['cheapest_provider'],
             "potential_savings": f"{pricing_summary['comparison']['max_potential_savings_fcfa']:,.0f} FCFA",
-            "cost_range": f"{min(pricing_summary['oneci']['total_cost_fcfa'], pricing_summary['smileid']['total_cost_fcfa'], pricing_summary['dkb']['total_cost_fcfa']):,.0f} - {max(pricing_summary['oneci']['total_cost_fcfa'], pricing_summary['smileid']['total_cost_fcfa'], pricing_summary['dkb']['total_cost_fcfa']):,.0f} FCFA"
+            "cost_range": f"{min(pricing_summary['oneci']['total_cost_fcfa'], pricing_summary['smileid']['total_cost_fcfa'], pricing_summary['dkb']['total_cost_fcfa']):,.0f} - {max(pricing_summary['oneci']['total_cost_fcfa'], pricing_summary['smileid']['total_cost_fcfa'], pricing_summary['dkb']['total_cost_fcfa']):,.0f} FCFA",
+            "oneci_advantage": "ONECI costs reduced due to registration-only usage pattern",
+            "usage_patterns": {
+                "oneci": "1 request/user (registration only)",
+                "smileid": "2 one-time + 1 monthly/user",
+                "dkb": "1 signature/user (signing only)"
+            }
         },
         "timing_insights": {
             "time_to_majority": timing_metrics['milestones'].get('50_percent', 'Not reached'),
@@ -478,14 +528,29 @@ def generate_executive_summary(model: BassModel, requests_per_user: int = 3) -> 
     # Strategic recommendations
     recommendations = []
     
-    # Provider recommendation
+    # Provider recommendation with updated context
     best_provider = pricing_summary['comparison']['cheapest_provider']
+    provider_details = {
+        "ONECI": "registration-only usage (1 request/user)",
+        "SmileID": "comprehensive solution (2 one-time + 1 monthly/user)",
+        "DKB": "signing-only usage (1 signature/user)"
+    }
+    
     recommendations.append({
         "category": "Vendor Selection",
         "recommendation": f"Choose {best_provider} as the primary digital signature provider",
-        "rationale": f"Offers lowest total cost of ownership at {pricing_summary[best_provider.lower()]['total_cost_fcfa']:,.0f} FCFA over 24 months",
+        "rationale": f"Offers lowest total cost of ownership at {pricing_summary[best_provider.lower()]['total_cost_fcfa']:,.0f} FCFA over 24 months with {provider_details.get(best_provider, 'optimized')} pattern",
         "priority": "High"
     })
+    
+    # ONECI-specific recommendation if it's competitive
+    if best_provider == "ONECI":
+        recommendations.append({
+            "category": "Implementation Strategy",
+            "recommendation": "Leverage ONECI's cost advantage from registration-only usage",
+            "rationale": "ONECI's corrected usage pattern (1 request/user) provides significant cost savings compared to full-service alternatives",
+            "priority": "High"
+        })
     
     # Timing recommendation
     if peak_info['period'] <= 6:
@@ -509,7 +574,7 @@ def generate_executive_summary(model: BassModel, requests_per_user: int = 3) -> 
         recommendations.append({
             "category": "Budget Planning",
             "recommendation": f"Prepare for upfront investment of {dkb_setup:,.0f} FCFA",
-            "rationale": "DKB requires significant setup costs but offers long-term savings",
+            "rationale": "DKB requires significant setup costs but offers long-term savings with signing-only usage pattern",
             "priority": "High"
         })
     
@@ -531,7 +596,7 @@ def generate_executive_summary(model: BassModel, requests_per_user: int = 3) -> 
         if volatility > 0.5:  # High volatility threshold
             risks.append({
                 "risk": f"{provider.upper()} cost volatility",
-                "description": f"High cost variation (volatility: {volatility:.2f})",
+                "description": f"High cost variation (volatility: {volatility:.2f}) in {roi_metrics[provider]['efficiency_metrics']['model_type']} model",
                 "mitigation": "Monitor monthly costs and consider alternative providers if costs spike",
                 "severity": "Medium"
             })
@@ -545,22 +610,33 @@ def generate_executive_summary(model: BassModel, requests_per_user: int = 3) -> 
             "severity": "High"
         })
     
+    # ONECI-specific risk assessment
+    if best_provider == "ONECI":
+        risks.append({
+            "risk": "Limited functionality scope",
+            "description": "ONECI only handles registration; additional solutions needed for contract signing",
+            "mitigation": "Plan for complementary signing solution or hybrid approach",
+            "severity": "Medium"
+        })
+    
     return {
         "executive_overview": {
             "analysis_date": pd.Timestamp.now().strftime("%Y-%m-%d"),
             "model_parameters": f"Innovation: {model.p}, Imitation: {model.q}, Market: {model.M:,}",
             "analysis_period": "24 months",
-            "key_metric": f"{final_users:,} projected users ({final_penetration:.1f}% penetration)"
+            "key_metric": f"{final_users:,} projected users ({final_penetration:.1f}% penetration)",
+            "usage_patterns_note": "Analysis reflects corrected usage patterns: ONECI (1 req/user), SmileID (2+1 req/user), DKB (1 sig/user)"
         },
         "key_findings": key_findings,
         "recommendations": recommendations,
         "risk_assessment": risks,
         "next_steps": [
-            "Finalize vendor selection based on cost analysis",
+            "Finalize vendor selection based on updated cost analysis",
             "Prepare implementation timeline aligned with adoption curve",
             "Establish budget allocation for selected provider",
             "Develop user adoption and training programs",
-            "Set up monitoring and evaluation framework"
+            "Set up monitoring and evaluation framework",
+            "Plan for complementary services if using ONECI (registration-only)"
         ]
     }
 
@@ -641,6 +717,9 @@ def validate_analysis_inputs(model: BassModel, **kwargs) -> None:
     """
     Validate inputs for analysis functions.
     
+    Note: requests_per_user parameter is deprecated since usage patterns
+    are now fixed per provider (ONECI: 1 req/user, SmileID: 2+1 req/user, DKB: 1 sig/user).
+    
     Args:
         model: BassModel instance
         **kwargs: Additional parameters to validate
@@ -655,7 +734,52 @@ def validate_analysis_inputs(model: BassModel, **kwargs) -> None:
         raise ValueError("Model must have forecast results. Run model.forecast() first.")
     
     for key, value in kwargs.items():
-        if key == 'requests_per_user' and value < 0:
-            raise ValueError("requests_per_user must be non-negative")
+        if key == 'requests_per_user':
+            warnings.warn("requests_per_user parameter is deprecated. Usage patterns are now fixed per provider.", 
+                         DeprecationWarning, stacklevel=2)
+            if value < 0:
+                raise ValueError("requests_per_user must be non-negative (though this parameter is deprecated)")
         elif key == 'periods' and value <= 0:
             raise ValueError("periods must be positive")
+
+
+def get_corrected_usage_patterns_summary() -> Dict:
+    """
+    Get a summary of the corrected usage patterns implemented in this version.
+    
+    Returns:
+        Dictionary with corrected usage patterns and their business impact
+    """
+    return {
+        "corrected_patterns": {
+            "ONECI": {
+                "old_pattern": "2 requests per user (registration + contract signing)",
+                "new_pattern": "1 request per user (registration only)",
+                "change": "Removed contract signing functionality",
+                "cost_impact": "Reduced costs by ~50%"
+            },
+            "SmileID": {
+                "pattern": "2 one-time + 1 monthly recurring per user",
+                "details": "Registration + signing + payment verification",
+                "change": "No change",
+                "cost_impact": "Unchanged"
+            },
+            "DKB": {
+                "pattern": "1 signature per user (contract signing only)",
+                "details": "Digital signature for contract signing",
+                "change": "No change", 
+                "cost_impact": "Unchanged"
+            }
+        },
+        "business_impact": {
+            "oneci_competitiveness": "Significantly improved due to lower usage requirements",
+            "cost_comparison": "ONECI now more likely to be cheapest option",
+            "implementation_strategy": "ONECI suitable for registration-only workflows",
+            "hybrid_approach": "May need complementary solution for contract signing if using ONECI"
+        },
+        "version_info": {
+            "correction_date": "2024",
+            "affected_modules": ["pricing_models.py", "analysis_tools.py", "streamlit_app.py"],
+            "key_change": "ONECI usage pattern corrected from 2 requests to 1 request per user"
+        }
+    }

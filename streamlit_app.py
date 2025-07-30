@@ -6,7 +6,7 @@ A professional web application for analyzing Bass Diffusion Models with
 
 Updated with corrected usage patterns and precise input controls:
 - ONECI: 1 request (registration only)
-- SmileID: 3 requests (registration + signing + cancelling)
+- SmileID: 2 requests + 1 monthly recurring (registration + signing + payment verification)
 - DKB: 1 request (signing only)
 
 Features precise number inputs for all parameters.
@@ -14,7 +14,7 @@ Features precise number inputs for all parameters.
 Run with: streamlit run streamlit_app.py
 
 Author: Bass Model Analysis Team
-Version: 1.3.0
+Version: 1.4.0 - FIXED ONECI to registration only
 """
 
 import streamlit as st
@@ -224,18 +224,18 @@ def create_cost_comparison_chart(analysis_results):
         x=months,
         y=pd.to_numeric(oneci_df["Monthly Cost (FCFA)"]),
         mode='lines+markers',
-        name='ONECI (1 request/user)',
+        name='ONECI (1 request/user - registration only)',
         line=dict(color=COLOR_PALETTE['primary']['oneci'], width=3),
-        hovertemplate='<b>ONECI</b><br>Month: %{x}<br>Cost: %{y:,.0f} FCFA<br>Usage: 1 request/user<extra></extra>'
+        hovertemplate='<b>ONECI</b><br>Month: %{x}<br>Cost: %{y:,.0f} FCFA<br>Usage: 1 request/user (registration only)<extra></extra>'
     ))
     
     fig.add_trace(go.Scatter(
         x=months,
         y=pd.to_numeric(smileid_df["Monthly Cost (FCFA)"]),
         mode='lines+markers',
-        name='SmileID (3 requests/user)',
+        name='SmileID (2 one-time + 1 monthly/user)',
         line=dict(color=COLOR_PALETTE['primary']['smileid'], width=3),
-        hovertemplate='<b>SmileID</b><br>Month: %{x}<br>Cost: %{y:,.0f} FCFA<br>Usage: 3 requests/user<extra></extra>'
+        hovertemplate='<b>SmileID</b><br>Month: %{x}<br>Cost: %{y:,.0f} FCFA<br>Usage: 2 one-time + 1 monthly/user<extra></extra>'
     ))
     
     fig.add_trace(go.Scatter(
@@ -248,7 +248,7 @@ def create_cost_comparison_chart(analysis_results):
     ))
     
     fig.update_layout(
-        title='Monthly Cost Comparison - All Providers (Updated Usage Patterns)',
+        title='Monthly Cost Comparison - All Providers (CORRECTED: ONECI Registration Only)',
         xaxis_title='Month',
         yaxis_title='Monthly Cost (FCFA)',
         height=500,
@@ -371,13 +371,6 @@ def display_provider_details(analysis_results):
         ("DKB Solutions", "dkb", col3, COLOR_PALETTE['primary']['dkb'])
     ]
     
-    # Provider name mapping for usage patterns
-    pattern_key_mapping = {
-        "ONECI": "ONECI",
-        "SmileID": "SMILEID",
-        "DKB Solutions": "DKB"
-    }
-    
     for name, key, col, color in providers:
         with col:
             data = pricing_summary[key]
@@ -397,39 +390,28 @@ def display_provider_details(analysis_results):
             </div>
             ''', unsafe_allow_html=True)
             
-            # Usage pattern - using correct key mapping
-            try:
-                patterns = get_usage_pattern_summary()
-                pattern_key = pattern_key_mapping.get(name, name.upper())
-                pattern_info = patterns['corrected_usage_patterns'][pattern_key]
-                
-                with st.expander(f"📋 {name} Usage Pattern"):
-                    st.write(f"**Description:** {pattern_info['description']}")
+            # Usage pattern - updated for ONECI
+            with st.expander(f"📋 {name} Usage Pattern"):
+                if name == "ONECI":
+                    st.write("**Description:** 1 one-time request per user (registration only)")
                     st.write("**Breakdown:**")
-                    for item in pattern_info['breakdown']:
-                        st.write(f"• {item}")
-                    st.write(f"**Billing Model:** {pattern_info['billing_model']}")
-                    
-            except (KeyError, AttributeError) as e:
-                # Fallback if usage patterns not available
-                with st.expander(f"📋 {name} Usage Pattern"):
-                    if name == "ONECI":
-                        st.write("**Description:** 1 one-time request per user (registration only)")
-                        st.write("**Breakdown:**")
-                        st.write("• 1 request for user registration/verification only")
-                        st.write("**Billing Model:** One-time costs")
-                    elif name == "SmileID":
-                        st.write("**Description:** 3 one-time requests per user (registration + signing + cancelling)")
-                        st.write("**Breakdown:**")
-                        st.write("• 1 request for user registration/verification")
-                        st.write("• 1 request for contract signing")
-                        st.write("• 1 request for contract cancelling")
-                        st.write("**Billing Model:** One-time costs")
-                    else:  # DKB Solutions
-                        st.write("**Description:** 1 one-time signature per user (signing only)")
-                        st.write("**Breakdown:**")
-                        st.write("• 1 digital signature for contract signing only")
-                        st.write("**Billing Model:** One-time with high setup costs")
+                    st.write("• 1 request for user registration/verification only")
+                    st.write("**Billing Model:** One-time costs for new users only")
+                    st.write("**Cost Pattern:** Decreases as adoption curve flattens")
+                elif name == "SmileID":
+                    st.write("**Description:** 2 one-time requests + 1 monthly recurring per user")
+                    st.write("**Breakdown:**")
+                    st.write("• 1 request for user registration/verification")
+                    st.write("• 1 request for contract signing verification")
+                    st.write("• 1 monthly request for payment verification (recurring)")
+                    st.write("**Billing Model:** Mixed: one-time setup + ongoing monthly charges")
+                    st.write("**Cost Pattern:** Increases with user base growth")
+                else:  # DKB Solutions
+                    st.write("**Description:** 1 one-time signature per user")
+                    st.write("**Breakdown:**")
+                    st.write("• 1 digital signature for contract signing only")
+                    st.write("**Billing Model:** One-time charges + high setup costs")
+                    st.write("**Cost Pattern:** High initial setup, then decreases as adoption curve flattens")
 
 
 def display_executive_insights(analysis_results):
@@ -454,21 +436,21 @@ def display_executive_insights(analysis_results):
     </div>
     ''', unsafe_allow_html=True)
     
-    # Cost analysis
+    # Cost analysis - UPDATED FOR ONECI CORRECTION
     cost = findings['cost_analysis']
     st.markdown(f'''
     <div class="recommendation-box">
-        <h4>💰 Cost Analysis (Updated Usage Patterns)</h4>
+        <h4>💰 Cost Analysis (CORRECTED Usage Patterns)</h4>
         <ul>
             <li><strong>Most Cost-Effective:</strong> {cost['most_cost_effective']}</li>
             <li><strong>Potential Savings:</strong> {cost['potential_savings']}</li>
             <li><strong>Cost Range:</strong> {cost['cost_range']}</li>
         </ul>
-        <p><strong>Note:</strong> Analysis reflects corrected usage patterns:</p>
+        <p><strong>⚠️ CORRECTED Usage Patterns:</strong></p>
         <ul>
-            <li>ONECI: 1 request/user (registration)</li>
-            <li>SmileID: 3 requests/user (registration + signing + cancelling)</li>
-            <li>DKB: 1 signature/user (signing)</li>
+            <li><strong>ONECI:</strong> 1 request/user (registration only)</li>
+            <li><strong>SmileID:</strong> 2 one-time + 1 monthly/user (registration + signing + payment verification)</li>
+            <li><strong>DKB:</strong> 1 signature/user (signing only)</li>
         </ul>
     </div>
     ''', unsafe_allow_html=True)
@@ -539,9 +521,9 @@ def create_export_data(analysis_results):
             ['Potential Savings', findings['cost_analysis']['potential_savings']],
             ['Cost Range', findings['cost_analysis']['cost_range']],
             ['', ''],
-            ['Updated Usage Patterns', ''],
+            ['CORRECTED Usage Patterns', ''],
             ['ONECI', '1 request/user (registration only)'],
-            ['SmileID', '3 requests/user (registration + signing + cancelling)'],
+            ['SmileID', '2 one-time + 1 monthly/user (registration + signing + payment verification)'],
             ['DKB Solutions', '1 signature/user (signing only)'],
         ])
         
@@ -723,11 +705,11 @@ def main():
                 st.write(f"**Crossovers:** {breakeven['summary']['number_of_crossovers']}")
                 st.write(f"**Most Stable:** {breakeven['summary']['most_stable_provider']}")
                 
-                # Usage pattern summary
-                st.markdown("### 📋 Updated Usage Patterns")
-                st.write("**ONECI:** 1 req/user")
-                st.write("**SmileID:** 3 req/user")  
-                st.write("**DKB:** 1 sig/user")
+                # CORRECTED Usage pattern summary
+                st.markdown("### 📋 CORRECTED Usage Patterns")
+                st.write("**ONECI:** 1 req/user (registration only)")
+                st.write("**SmileID:** 2 one-time + 1 monthly/user")  
+                st.write("**DKB:** 1 sig/user (signing only)")
         
         with tab3:
             display_provider_details(analysis_results)
@@ -830,30 +812,32 @@ def main():
             <h2>🎯 Welcome to Bass Model Analysis</h2>
             <p>Analyze market adoption patterns and compare pricing strategies for digital signature providers.</p>
             <p><strong>Providers:</strong> ONECI • SmileID • DKB Solutions</p>
-            <p><strong>Updated:</strong> Corrected usage patterns and precise parameter controls!</p>
+            <p><strong>⚠️ CORRECTED:</strong> ONECI usage pattern fixed to registration only!</p>
             <p>👈 Adjust parameters in the sidebar and click "Run Analysis" to begin!</p>
         </div>
         """, unsafe_allow_html=True)
         
-        # Usage patterns explanation - UPDATED
-        st.markdown("### 📋 Corrected Provider Usage Patterns")
+        # Usage patterns explanation - UPDATED FOR ONECI CORRECTION
+        st.markdown("### 📋 CORRECTED Provider Usage Patterns")
         
         col1, col2, col3 = st.columns(3)
         
         with col1:
             st.markdown("""
-            **🔵 ONECI**
+            **🔵 ONECI (CORRECTED)**
             - 1 one-time request per user
-            - Registration only
+            - **Registration only**
             - Simple, cost-effective
+            - ✅ Fixed usage pattern
             """)
         
         with col2:
             st.markdown("""
             **🟢 SmileID**
-            - 3 one-time requests per user
-            - Registration + Signing + Cancelling
+            - 2 one-time + 1 monthly recurring per user
+            - Registration + Signing + Payment verification
             - Most comprehensive solution
+            - Growing costs with user base
             """)
         
         with col3:
@@ -862,19 +846,21 @@ def main():
             - 1 one-time signature per user
             - Contract signing only
             - High setup, specialized use
+            - Front-loaded costs
             """)
         
         # New features highlight
-        st.markdown("### 🆕 New Features")
+        st.markdown("### 🆕 Key Corrections & Features")
         
         col1, col2 = st.columns(2)
         
         with col1:
             st.markdown("""
-            **📊 Updated Business Logic:**
-            - ✅ Corrected usage patterns per provider
+            **📊 CORRECTED Business Logic:**
+            - ✅ ONECI: 1 request/user (registration only)
+            - ✅ SmileID: 2 one-time + 1 monthly/user
+            - ✅ DKB: 1 signature/user (signing only)
             - ✅ Accurate cost calculations
-            - ✅ Realistic business scenarios
             """)
         
         with col2:
@@ -887,25 +873,25 @@ def main():
             """)
         
         # Business scenarios
-        st.markdown("### 💼 Business Scenarios")
+        st.markdown("### 💼 Business Impact of ONECI Correction")
         
         scenarios_col1, scenarios_col2 = st.columns(2)
         
         with scenarios_col1:
             st.markdown("""
-            **Micro-Marketing (p = 0.00001):**
-            - Extremely minimal external influence
-            - Almost pure word-of-mouth
-            - Realistic for stealth/organic launches
+            **Before Correction:**
+            - ONECI: 2 requests/user (registration + signing)
+            - Higher ONECI costs
+            - Less competitive advantage
             """)
         
         with scenarios_col2:
             st.markdown("""
-            **Flexible Time Horizons:**
-            - 6 months: Quick pilot assessment
-            - 24 months: Standard business planning
-            - 60 months: 5-year strategic horizon
-            - Up to 120 months: Long-term modeling
+            **After Correction:**
+            - ONECI: 1 request/user (registration only)
+            - Lower ONECI costs
+            - More competitive vs SmileID & DKB
+            - Better cost-effectiveness
             """)
         
         # Parameter precision examples
